@@ -47,4 +47,4 @@ with mp_face_mesh.FaceMesh(
     cv2.imshow('MediaPipe FaceMesh', image)
     if cv2.waitKey(1) & 0xFF == 27:
       break
-cap.release()
+  cap.release()
