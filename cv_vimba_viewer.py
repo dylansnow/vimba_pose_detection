@@ -39,9 +39,10 @@ import mediapipe as mp
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_face_mesh = mp.solutions.face_mesh
+mp_holistic = mp.solutions.holistic
 
 
-FRAME_QUEUE_SIZE = 10
+FRAME_QUEUE_SIZE = 2
 FRAME_HEIGHT = 544
 FRAME_WIDTH = 728
 
@@ -205,7 +206,9 @@ class FrameConsumer(threading.Thread):
         while alive:
             with mp_face_mesh.FaceMesh(
                 min_detection_confidence=0.5,
-                min_tracking_confidence=0.5) as face_mesh:
+                min_tracking_confidence=0.5) as face_mesh, mp_holistic.Holistic(
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5) as holistic:
                 # Update current state by dequeuing all currently available frames.
                 frames_left = self.frame_queue.qsize()
                 while frames_left:
@@ -257,6 +260,29 @@ class FrameConsumer(threading.Thread):
                                 .get_default_face_mesh_contours_style())
                         cv2.imshow('MediaPipe FaceMesh', image)
                     if cv2.waitKey(1) & 0xFF == 27:
+                        break
+
+                    results = holistic.process(image)
+
+                    # Draw landmark annotation on the image.
+                    image.flags.writeable = True
+                    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                    mp_drawing.draw_landmarks(
+                        image,
+                        results.face_landmarks,
+                        mp_holistic.FACEMESH_CONTOURS,
+                        landmark_drawing_spec=None,
+                        connection_drawing_spec=mp_drawing_styles
+                        .get_default_face_mesh_contours_style())
+                    mp_drawing.draw_landmarks(
+                        image,
+                        results.pose_landmarks,
+                        mp_holistic.POSE_CONNECTIONS,
+                        landmark_drawing_spec=mp_drawing_styles
+                        .get_default_pose_landmarks_style())
+                    # Flip the image horizontally for a selfie-view display.
+                    cv2.imshow('MediaPipe Holistic', cv2.flip(image, 1))
+                    if cv2.waitKey(5) & 0xFF == 27:
                         break
 
                 # If there are no frames available, show dummy image instead
